@@ -25,6 +25,12 @@ todosRouter.post("/", async (req, res) => {
       .insert(todosTable)
       .values({ title: result.data.title })
       .returning();
+
+    if (res.app.locals.broadcastToAll) {
+      res.app.locals.broadcastToAll(
+        JSON.stringify({ type: "new_todo", data: newTodo }),
+      );
+    }
     return res.status(201).json({ data: newTodo });
   } catch (e) {
     return res.status(500).json({ error: (e as Error).message });
