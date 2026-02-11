@@ -26,10 +26,12 @@ todosRouter.post("/", async (req, res) => {
       .values({ title: result.data.title })
       .returning();
 
-    if (res.app.locals.broadcastToAll) {
+    try {
       res.app.locals.broadcastToAll(
         JSON.stringify({ type: "new_todo", data: newTodo }),
       );
+    } catch (e) {
+      console.error("WS broadcast failed:", e);
     }
     return res.status(201).json({ data: newTodo });
   } catch (e) {
