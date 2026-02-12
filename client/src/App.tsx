@@ -1,35 +1,111 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useEffect, useRef, useState } from "react";
+import { Button } from "./components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "./components/ui/card";
+import { Input } from "./components/ui/input";
+import { todoService } from "./services/todo";
+import type { Todo } from "./types/todo";
 
-function App() {
-  const [count, setCount] = useState(0)
+const App = () => {
+  const [todos, setTodos] = useState<Todo[]>([]);
+  const isConnectedWsRef = useRef<boolean>(false);
+
+  const addTodoHandler = async (form: FormData) => {
+    const todo = form.get("todo");
+    if (typeof todo !== "string" || !todo.trim()) {
+      alert("Please enter a valid todo");
+      return;
+    }
+    const response = await todoService.createTodo(todo.trim());
+    if ("error" in response) {
+      alert(response.error);
+    } else {
+      alert("Todo created successfully");
+    }
+  };
+
+  const websocketHandler = () => {
+    const ws = new WebSocket(
+      `${import.meta.env.VITE_API_BASE_URL.replace("http", "ws")}/ws`,
+    );
+
+    ws.addEventListener("open", () => {
+      console.log("WebSocket connected");
+    });
+
+    ws.addEventListener("message", (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        if (message.type === "new_todo" && message.data?.id) {
+          setTodos((prevTodos) => [message.data as Todo, ...prevTodos]);
+        }
+      } catch (error) {
+        console.error("Failed to parse WebSocket message:", error);
+      }
+    });
+
+    return ws;
+  };
+
+  useEffect(() => {
+    (async () => {
+      const res = await todoService.getTodos();
+      if ("data" in res) {
+        setTodos(res.data.reverse());
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    let ws: WebSocket | null;
+    if (!isConnectedWsRef.current) {
+      ws = websocketHandler();
+      isConnectedWsRef.current = true;
+    }
+    return () => {
+      if (isConnectedWsRef.current && ws) {
+        ws.close();
+        isConnectedWsRef.current = false;
+      }
+    };
+  }, []);
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <main className="h-screen w-screen flex justify-center">
+      <div className="mt-20 text-center">
+        <h1 className="text-3xl font-semibold">Todo Together</h1>
+        <div className="mt-5 mx-auto w-fit">
+          <form action={addTodoHandler} className="flex gap-2">
+            <Input
+              className="w-96"
+              name="todo"
+              placeholder="Insert your todo"
+              required
+            />
+            <Button type="submit">Submit</Button>
+          </form>
+        </div>
+        <div className="mt-20 w-screen grid xl:grid-cols-3 md:grid-cols-2 gap-4 px-20 pb-10">
+          {todos.map((todo) => {
+            return (
+              <Card
+                key={todo.id}
+                className="transition duration-100 hover:scale-105"
+              >
+                <CardHeader>
+                  <CardTitle className="text-left">
+                    {new Date(todo.createdAt).toLocaleString()}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="text-left">
+                  <p>{todo.title}</p>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+    </main>
+  );
+};
 
-export default App
+export default App;
