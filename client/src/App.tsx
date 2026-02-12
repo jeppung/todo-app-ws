@@ -33,11 +33,17 @@ const App = () => {
     });
 
     ws.addEventListener("message", (event) => {
-      const message = JSON.parse(event.data);
-      if (message.type === "new_todo") {
-        setTodos((prevTodos) => [message.data, ...prevTodos]);
+      try {
+        const message = JSON.parse(event.data);
+        if (message.type === "new_todo" && message.data?.id) {
+          setTodos((prevTodos) => [message.data as Todo, ...prevTodos]);
+        }
+      } catch (error) {
+        console.error("Failed to parse WebSocket message:", error);
       }
     });
+
+    return ws;
   };
 
   useEffect(() => {
@@ -50,10 +56,17 @@ const App = () => {
   }, []);
 
   useEffect(() => {
+    let ws: WebSocket;
     if (!isConnectedWsRef.current) {
-      websocketHandler();
+      ws = websocketHandler();
       isConnectedWsRef.current = true;
     }
+    return () => {
+      if (isConnectedWsRef.current) {
+        ws.close();
+        isConnectedWsRef.current = false;
+      }
+    };
   }, []);
 
   return (
