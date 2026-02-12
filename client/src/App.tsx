@@ -56,13 +56,13 @@ const App = () => {
   }, []);
 
   useEffect(() => {
-    let ws: WebSocket;
+    let ws: WebSocket | null;
     if (!isConnectedWsRef.current) {
       ws = websocketHandler();
       isConnectedWsRef.current = true;
     }
     return () => {
-      if (isConnectedWsRef.current) {
+      if (isConnectedWsRef.current && ws) {
         ws.close();
         isConnectedWsRef.current = false;
       }
