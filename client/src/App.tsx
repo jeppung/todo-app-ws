@@ -11,7 +11,11 @@ const App = () => {
 
   const addTodoHandler = async (form: FormData) => {
     const todo = form.get("todo");
-    const response = await todoService.createTodo(todo as string);
+    if (typeof todo !== "string" || !todo.trim()) {
+      alert("Please enter a valid todo");
+      return;
+    }
+    const response = await todoService.createTodo(todo.trim());
     if ("error" in response) {
       alert(response.error);
     } else {

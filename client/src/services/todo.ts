@@ -26,6 +26,9 @@ export const todoService = {
           body: JSON.stringify({ title }),
         },
       );
+      if (!response.ok) {
+        throw new Error("Failed to create todo");
+      }
       return (await response.json()) as { data: Todo };
     } catch (e) {
       return { error: e instanceof Error ? e.message : "Unknown error" };
